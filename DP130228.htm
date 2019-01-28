@@ -1,0 +1,61 @@
+<!doctype html><html>
+<head><title>Picture in your Palm</title></head><body>
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/three.js/98/three.min.js"></script>
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/PreloadJS/1.0.1/preloadjs.min.js"></script>
+<div id="cameraNavi">
+<video id="video" autoplay playsinline style="display:none;"></video></div>
+<canvas id="canvas" style="display:none;"></canvas></div>
+<script type="text/javascript">
+var renderer = new THREE.WebGLRenderer({alpha:true,antialias:true});
+renderer.setClearColor(0x333333,1);
+renderer.setSize( window.innerWidth, window.innerHeight );
+renderer.setPixelRatio(window.devicePixelRatio ? window.devicePixelRatio:1);
+renderer.gammaInput = true; renderer.gammaOutput = true;
+document.body.appendChild( renderer.domElement );
+renderer.domElement.onmousemove = function(e) {
+    var x = e.pageX / window.innerWidth - 0.5;
+    var y = e.pageY / window.innerHeight - 0.5;
+    camera.rotation.y = 3*x; camera.rotation.x = 3*y;
+    light.position.x = x * 5000; light.position.y = y * 5000; };
+window.addEventListener("deviceorientation", function (e) {
+    light.position.x = -e.gamma * 1000;
+    light.position.y = e.beta * 1000; });
+var camera = new THREE.PerspectiveCamera( 50 /*fov*/,
+ window.innerWidth/window.innerHeight /*aspect*/,0.1,1000000);
+camera.position.set(0, 0, 4500);
+var scene = new THREE.Scene();
+var al = new THREE.AmbientLight( 0x666666 ); scene.add(al);
+var light = new THREE.PointLight( 0x000000, 1, 0, 2);
+light.position.set(0, 0, 100000); scene.add(light);
+var q = new createjs.LoadQueue();
+q.on('complete', function() {
+  var cMap = new THREE.Texture(q.getResult('color'));
+  var rMap = new THREE.Texture(q.getResult('rough'));
+  var bMap = new THREE.Texture(q.getResult('bump'));
+  cMap.needsUpdate = true; rMap.needsUpdate = true;
+  bMap.needsUpdate = true;
+  var w = cMap.image.width; var h = cMap.image.height;
+  const geometry = new THREE.PlaneGeometry(1, 1);
+  const material = new THREE.MeshStandardMaterial({
+    map:cMap, bumpMap:bMap, bumpScale:0.3,roughnessMap:rMap});
+  const plane = new THREE.Mesh( geometry, material );
+  plane.scale.set(w, h, 1); scene.add(plane); });
+q.loadManifest([ { id:'color', src:'./DP130228.jpg'},
+ {id:'bump',src:'./bump.png'},{id:'rough',src:'./rough.png'}]);
+ let v = document.getElementById("video");
+navigator.mediaDevices.getUserMedia(
+  { video:{facingMode:"user"},audio:false}
+).then(function(stream){v.srcObject = stream;
+v.play(); }).catch(function(err){});
+var c = document.getElementById("canvas");
+v.addEventListener("loadedmetadata",function(e) {
+  c.width = v.videoWidth; c.height = v.videoHeight;
+  var ctx = c.getContext("2d");
+  setInterval(function(e) {
+    ctx.drawImage(video,0,0,c.width,c.height);
+    var data = (ctx.getImageData(0,0,c.width,c.height)).data;
+    var i = ((c.height/2)*c.width+(c.width/2))*4;const s=1024.;
+    light.color.setRGB(data[i+0]/s,data[i+1]/s,data[i+2]/s) },50);});
+function animate(){ requestAnimationFrame(animate);
+  renderer.render(scene, camera); }; animate();
+</script></body></html>
